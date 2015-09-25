@@ -1,0 +1,582 @@
+** Title slide					     :slide:
+#+BEGIN_SRC emacs-lisp-slide
+(org-show-animate '("C++ Operator oerloading" "Evan Misshula"))
+#+END_SRC
+
+** Operator overloading				     :slide:
+ - rewriting a function denoted by an operator symbol
+ - Sometimes cleaner than function calls for certain functions (think
+   about mathematical types)
+   - We cand define addition for fractions, complex numbers
+   - We can define multiplication for matrixes
+   - Dot product for vectors
+ - Some operators are alredy overloaded
+   - '<<' stream insertion, bitwise left shift
+   - '+' arithmetic on int's, floats and double
+** What we will cover				     :slide:
+ - Introduction	
+ - Fundamentals of Operator Overloading	
+ - Restrictions on Operator Overloading	
+ - Operator Functions as Class Members vs. as friend Functions
+ - Overloading Stream-Insertion and Stream-Extraction Operators
+ - Overloading Unary Operators	
+ - Overloading Binary Operators	
+ - Case Study: Array Class	
+ - Converting between Types	
+ - Case Study: A String Class	
+ - Overloading ++ and --	
+ - Case Study: A Date Class
+ - Standard Library Classes string and vector
+** Fundamentals					     :slide:
+ - Types
+   - Built in (int, char) or user-defined
+   - Can use existing operators with user-defined types
+     - Cannot create new operators
+ - Overloading operators
+   - Create a function for the class
+   - Name function operator followed by symbol
+   - Operator+ for the addition operator +
+ - You declare a structure
+** Helpful example and general rules		     :slide:
+ - Overloading provides concise notation
+   - object2 = object1.add(object2);
+   - object2 = object2 + object1;
+ -General Rules when Using operators on a class object
+  - It must be overloaded for that class
+  - Exceptions:  Both can be overloaded
+    - Assignment operator, =
+      - Memberwise assignment between objects
+    - Address operator, &
+      - Returns address of object
+
+** Limits of overloading			     :slide:
+ - Types
+ - Built in (int, char) or user-defined
+   - Can use existing operators with user-defined types
+ - CANNOT CREATE NEW OPERATORS
+ - Overloading operators
+   - Create a function for the class
+ - Name function operator followed by symbol
+   - Operator+ for the addition operator +
+** More limits					     :slide:
+ - Cannot change how operators act on built-in data types
+   - I.e., cannot change integer addition
+ - Precedence of operator (order of evaluation)
+ - Use parentheses to force order-of-operations
+   - Associativity (left-to-right or right-to-left)
+ - Number of operands (arity)
+ - & is unitary, only acts on one operand
+ - CANNOT CREATE NEW OPERATORS
+   - Operators must be overloaded explicitly
+   - /Overloading + does not overload +=/
+** Members vs Friends				     :slide:
+- Operator functions
+  - Member functions
+    - Use this keyword to implicitly get argument
+    - Gets left operand for binary operators (like +)
+    - Leftmost object must be of same class as operator
+  - Non member functions
+    - Need parameters for both operands
+    - Can have object of different class than operator
+  - Must be a friend to access private or protected data
+  - Called when
+    - Left operand of binary operator of same class
+    - Single operand of unitary operator of same class
+** Commutative operators			     :slide:
+ + '+' should be commutative 
+   + So both “a + b” and “b + a” work
+ + Suppose we have two different classes
+ + Overloaded operator can only be member function when its class is on left
+   + HugeIntClass + Long int
+     + Can be member function
+ + When other way, need a non-member overload function
+   - Long int + HugeIntClass
+** Example stream insertion and extraction	     :slide:
+#+BEGIN_SRC c++
+// Copyright 2015 Evan Misshula
+
+// stream-extraction operators.
+#include <iostream>
+
+using std::cout;
+using std::cin;
+using std::endl;
+using std::ostream;
+using std::istream;
+
+#include <iomanip>
+
+using std::setw;
+
+// PhoneNumber class definition
+class PhoneNumber {
+  friend ostream &operator<<(ostream&, const PhoneNumber &);
+  friend istream &operator>>(istream&, PhoneNumber &);
+
+ private:
+     char areaCode[ 4 ];  // 3-digit area code and null
+     char exchange[ 4 ];  // 3-digit exchange and null
+     char line[ 5 ];      // 4-digit line and null
+};  // end class PhoneNumber
+
+// overloaded stream-insertion operator; cannot be
+// a member function if we would like to invoke it with
+// cout << somePhoneNumber;
+
+ostream &operator<<(ostream &output,  const PhoneNumber &num) {
+  output << "(" << num.areaCode << ") " << num.exchange << "-" << num.line;
+  return output;     // enables cout << a << b << c;
+}  // end function operator<<
+
+// overloaded stream-extraction operator; cannot be
+// a member function if we would like to invoke it with
+// cin >> somePhoneNumber;
+
+istream &operator>>(istream &input, PhoneNumber &num) {
+  input.ignore();                     // skip (
+  input >> setw(4) >> num.areaCode;  // input area code
+  input.ignore(2);                  // skip ) and space
+  input >> setw(4) >> num.exchange;  // input exchange
+  input.ignore();                     // skip dash (-)
+  input >> setw(5) >> num.line;     // input line
+  return input;      // enables cin >> a >> b >> c;
+}  // end function operator>>
+
+int main() {
+  PhoneNumber phone;  // create object phone
+  cout << "Enter phone number in the form (123) 456-7890:\n";
+  // cin >> phone invokes operator>> by implicitly issuing
+  // the non-member function call operator>>( cin, phone )
+  cin >> phone;
+  cout << "The phone number entered was: ";
+
+  // cout << phone invokes operator<< by implicitly issuing
+  // the non-member function call operator<<( cout, phone )
+  cout << phone << endl;
+  return 0;
+}  // end main
+
+#+END_SRC
+
+** Overloading Unary Operators			     :slide:
+ - Overloading unary operators
+ - Non-static member function, no arguments
+ - Non-member function, one argument
+ - Argument must be class object or reference to class object
+ - Remember, static functions only access static data 
+** Overloading Unary Operators (II)		     :slide:
+- Overload ! to test for empty string
+If non-static member function, needs no arguments
+!s becomes s.operator!()
+#+BEGIN_SRC c++
+class String {
+public:
+   bool operator!() const;
+   ...
+};
+#+END_SRC  
+If non-member function, needs one argument
+#+BEGIN_SRC c++
+s! becomes operator!(s)
+   class String {
+   friend bool operator!( const String & )
+   ...
+}
+#+END_SRC
+** Overloading Binary Operators			     :slide:
+ - Overloading binary operators
+ - Non-static member function, one argument
+ - Non-member function, two arguments
+ - One argument must be class object or reference
+ - Upcoming example
+ - If non-static member function, needs one argument
+ #+BEGIN_SRC c++
+class String {
+public:
+   const String &operator+=( const String & );
+   ...
+};
+ #+END_SRC 
+- y += z equivalent to y.operator+=( z )
+** Implement a data structure (Array)		     :slide:
+ 1. Arrays in C++
+ 2. No range checking
+ 3. Cannot be compared meaningfully with ==
+ 4. No array assignment (array names const pointers)
+ 5. Cannot input/output entire arrays at once
+ 6. One element at a time
+
+** Example:Implement an Array class with:	     :slide:
+ 1. Range checking
+ 2. Array assignment
+ 3. Arrays that know their size
+ 4. Outputting/inputting entire arrays with << and >>
+ 5. Array comparisons with == and !=
+** Case Study: Array class			     :slide:
+ - Copy constructor
+ - Used whenever copy of object needed
+ - Passing by value (return value or parameter)
+ - Initializing an object with a copy of another
+
+ - Array newArray( oldArray );
+   - newArray copy of oldArray
+ - Prototype for class Array
+   - Array( const Array & );
+
+** Requirement					     :slide:
+Must take reference
+Otherwise, pass by value
+Tries to make copy by calling copy constructor
+Don't want:
+ - Infinite loop
+
+**  Overloading Binary Operators		     :slide:
+ - Upcoming example
+ - If non-member function, needs two arguments
+#+BEGIN_SRC c++
+class String {
+   friend const String &operator+=( 
+               String &, const String & );
+   ...
+};
+#+END_SRC
+ - y += z equivalent to operator+=( y, z )  
+#+BEGIN_SRC c++ :tangle :file array1.h
+#ifndef _HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H__HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H_
+#define _HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H__HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H_
+
+
+#include <iostream>
+
+using std::ostream;
+using std::istream;
+
+class Array {
+  friend ostream &operator<<(ostream &, const Array &);
+  friend istream &operator>>(istream &, Array &);
+
+ public:
+  explicit Array(int = 10);       // default constructor
+  Array(const Array &);  // copy constructor
+  ~Array();                // destructor
+  int getSize() const;     // return size
+
+  // assignment operator
+  const Array &operator=(const Array &);
+  // equality operator
+  bool operator==(const Array &) const;
+
+  // inequality operator; returns opposite of == operator
+  bool operator!=(const Array &right) const {
+    return !(*this == right);  // invokes Array::operator==
+}  // end function operator!=
+
+// subscript operator for non-const objects returns lvalue
+  int &operator[](int);
+
+  // subscript operator for const objects returns rvalue
+  const int &operator[](int) const;
+
+ private:
+  int size;  // array size
+  int *ptr;  // pointer to first element of array
+};
+// end class Array
+#endif //_HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H__HOME_EVAN_DOCUMENTS_DOUG_ADS_SOURCES_OPOVERLOAD_ARRAY1_H_
+#+END_SRC
+
+** Array1.cpp					     :slide:
+#+BEGIN_SRC c++
+// Copyright 2015 Evan Misshula
+#include <iostream>
+using std::cout;
+using std::cin;
+using std::endl;
+#include <iomanip>
+using std::setw;
+#include <new>       // C++ standard "new" operator
+#include <cstdlib>   // exit function prototype
+#include "/home/evan/Documents/doug/ads/sources/opOverloading/array1.h"  // Array class definition
+// default constructor for class Array (default size 10)
+Array::Array(int arraySize) {
+  // validate arraySize
+  size = (arraySize > 0 ? arraySize : 10);
+  ptr = new int[ size ];  // create space for array
+  for (int i = 0; i < size; i++) {
+       ptr[ i ] = 0;          // initialize array
+  }
+}  // end Array default constructor
+// copy constructor for class Array;
+// must receive a reference to prevent infinite recursion
+Array::Array(const Array &arrayToCopy)
+    : size(arrayToCopy.size) {
+  ptr = new int[ size ];  // create space for array
+  for (int i = 0; i < size; i++) {
+    ptr[ i ] = arrayToCopy.ptr[ i ];  // copy into object
+  }
+}  // end Array copy constructor
+
+// destructor for class Array
+Array::~Array() {
+  delete [] ptr;  // reclaim array space
+}  // end destructor
+
+// return size of array
+int Array::getSize() const {
+    return size;
+}  // end function getSize
+
+// overloaded assignment operator;
+// const return avoids: (a1 = a2) = a3
+const Array &Array::operator=(const Array &right) {
+  if (&right != this) {  // check for self-assignment
+    // for arrays of different sizes, deallocate original
+    // left-side array, then allocate new left-side array
+    if (size != right.size) {
+      delete [] ptr;         // reclaim space
+      size = right.size;     // resize this object
+      ptr = new int[ size ];  // create space for array copy
+    }  // end inner if
+
+    for (int i = 0; i < size; i++) {
+          ptr[ i ] = right.ptr[ i ];  // copy array into object
+    }
+  }  // end outer if
+  return *this;   // enables x = y = z, for example
+}  // end function operator=
+
+// determine if two arrays are equal and
+// return true, otherwise return false
+bool Array::operator==(const Array &right) const {
+  if (size != right.size)
+    return false;    // arrays of different sizes
+  for (int i = 0; i < size; i++) {
+    if (ptr[ i ] != right.ptr[ i ])
+      return false;  // arrays are not equal
+  }
+    return true;        // arrays are equal
+}  // end function operator==
+
+// overloaded subscript operator for non-const Arrays
+// reference return creates an lvalue
+int &Array::operator[](int subscript)  {
+  // check for subscript out of range error
+  if (subscript < 0 || subscript >= size) {
+    cout << "\nError: Subscript " << subscript
+         << " out of range" << endl;
+    exit(1);  // terminate program; subscript out of range
+  }  // end if
+  return ptr[ subscript ];  // reference return
+}  // end function operator[]
+
+// overloaded subscript operator for const Arrays
+// const reference return creates an rvalue
+const int &Array::operator[](int subscript) const {
+  // check for subscript out of range error
+  if (subscript < 0 || subscript >= size) {
+    cout << "\nError: Subscript " << subscript
+         << " out of range" << endl;
+
+    exit(1);  // terminate program; subscript out of range
+  }  // end if
+  return ptr[ subscript ];  // const reference return
+}  // end function operator[]
+
+// overloaded input operator for class Array;
+// inputs values for entire array
+istream &operator>>(istream &input, Array &a) {
+  for (int i = 0; i < a.size; i++) {
+      input >> a.ptr[ i ];
+  }
+  return input;   // enables cin >> x >> y;
+}  // end function
+
+// overloaded output operator for class Array
+ostream &operator<<(ostream &output, const Array &a) {
+  int i;
+  // output private ptr-based array
+  for (i = 0; i < a.size; i++) {
+      output << setw(12) << a.ptr[ i ];
+      if ((i + 1) % 4 == 0)  // 4 numbers per row of output
+        output << endl;
+  }  // end for
+
+  if (i % 4 != 0)  // end last line of output
+      output << endl;
+
+  return output;   // enables cout << x << y;
+}  // end function operator<<
+#+END_SRC
+** Array Main					     :slide:
+#+BEGIN_SRC c++
+// Copyright 2015 Evan Misshula
+
+
+#include <iostream>
+using std::cout;
+using std::cin;
+using std::endl;
+#include "./array1.h"
+
+int main() {
+  Array integers1(7);  // seven-element Array
+  Array integers2;       // 10-element Array by default
+
+  // print integers1 size and contents
+  cout << "Size of array integers1 is "
+       << integers1.getSize()
+       << "\nArray after initialization:\n" << integers1;
+
+  // print integers2 size and contents
+  cout << "\nSize of array integers2 is "
+       << integers2.getSize()
+       << "\nArray after initialization:\n" << integers2;
+  // input and print integers1 and integers2
+  cout << "\nInput 17 integers:\n";
+  cin >> integers1 >> integers2;
+
+  cout << "\nAfter input, the arrays contain:\n"
+       << "integers1:\n" << integers1
+       << "integers2:\n" << integers2;
+
+  // use overloaded inequality (!=) operator
+  cout << "\nEvaluating: integers1 != integers2\n";
+
+  if (integers1 != integers2)
+    cout << "integers1 and integers2 are not equal\n";
+
+  // create array integers3 using integers1 as an
+  // initializer; print size and contents
+  Array integers3(integers1);  // calls copy constructor
+
+  cout << "\nSize of array integers3 is "
+       << integers3.getSize()
+       << "\nArray after initialization:\n" << integers3;
+  // use overloaded assignment (=) operator
+  cout << "\nAssigning integers2 to integers1:\n";
+  integers1 = integers2;  // note target is smaller
+
+  cout << "integers1:\n" << integers1
+       << "integers2:\n" << integers2;
+
+  // use overloaded equality (==) operator
+  cout << "\nEvaluating: integers1 == integers2\n";
+
+  if (integers1 == integers2)
+    cout << "integers1 and integers2 are equal\n";
+
+  // use overloaded subscript operator to create rvalue
+  cout << "\nintegers1[5] is " << integers1[ 5 ];
+
+  // use overloaded subscript operator to create lvalue
+  cout << "\n\nAssigning 1000 to integers1[5]\n";
+  integers1[ 5 ] = 1000;
+  cout << "integers1:\n" << integers1;
+
+  // attempt to use out-of-range subscript
+  cout << "\nAttempt to assign 1000 to integers1[15]" << endl;
+  integers1[ 15 ] = 1000;  // ERROR: out of range
+
+  return 0;
+}  // end main
+#+END_SRC
+** Output					     :slide:
+ 
+Size of array integers1 is 7
+Array after initialization:
+           0           0           0           0
+           0           0           0
+ 
+Size of array integers2 is 10
+Array after initialization:
+           0           0           0           0
+           0           0           0           0
+           0           0
+ 
+Input 17 integers:
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+ 
+After input, the arrays contain:
+integers1:
+           1           2           3           4
+           5           6           7
+integers2:
+           8           9          10          11
+          12          13          14          15
+
+fig08_06.cpp
+output (2 of 3)
+
+
+Evaluating: integers1 != integers2
+integers1 and integers2 are not equal
+ 
+Size of array integers3 is 7
+Array after initialization:
+           1           2           3           4
+           5           6           7
+ 
+Assigning integers2 to integers1:
+integers1:
+           8           9          10          11
+          12          13          14          15
+          16          17
+integers2:
+           8           9          10          11
+          12          13          14          15
+          16          17
+ 
+Evaluating: integers1 == integers2
+integers1 and integers2 are equal
+ 
+** Converting between Types			     :slide:
+ - Casting
+   - Traditionally, cast integers to floats, etc.
+ - May need to convert between user-defined types
+   - Cast operator (conversion operator)
+ - Convert from 
+   - One class to another
+ - Class to built-in type (int, char, etc.)
+   - Must be non-static member function
+   - Cannot be friend
+ - Do not specify return type
+ - Implicitly returns type to which you are converting
+** Converting between Types			     :slide:
+ - Casting can prevent need for overloading
+ - Suppose class String can be cast to char *
+ - cout << s; // s is a String
+   - Compiler implicitly converts s to char *
+ - Do not have to overload <<
+   - Compiler can only do 1 cast
+**  Overloading ++ and --			     :slide:
+ - Increment/decrement operators can be overloaded
+ - Add 1 to a Date object, d1
+   - Prototype (member function)
+ - Date &operator++();
+   - ++d1 same as d1.operator++()
+ - Prototype (non-member)
+   - Friend Date &operator++( Date &);
+   - ++d1 same as operator++( d1 )
+** Overloading ++ and -- (II)			     :slide:
+ - To distinguish pre/post increment
+   - Post increment has a dummy parameter
+ - int of 0
+   - Prototype (member function)
+   - Date operator++( int );
+ - d1++ same as d1.operator++( 0 )
+ - Prototype (non-member)
+   - friend Date operator++( Data &, int );
+   - d1++ same as operator++( d1, 0 )
+ - Integer parameter does not have a name
+ - Not even in function definition
+** Overloading ++ and --			     :slide:
+ - Return values
+ - Preincrement
+   - Returns by reference (Date &)
+   - lvalue (can be assigned)
+ - Postincrement
+   - Returns by value
+   - Returns temporary object with old value
+   - rvalue (cannot be on left side of assignment)
+ - Decrement operator analogous
+
